@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speech to Text</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="Voxly home">
+      <span class="brand-mark"><span></span></span>
+      <span>voxly</span>
+    </a>
+    <nav>
+      <button class="nav-item active" type="button" data-view="capture"><span>◉</span> Capture</button>
+      <button class="nav-item" type="button" data-view="history"><span>≡</span> History</button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="usage-ring"><span id="wordCount">0</span></div>
+      <div><strong>Words today</strong><small id="wordProgress">Personal workspace</small></div>
+    </div>
+  </aside>
+
+  <main class="workspace">
+    <header class="topbar">
+      <div>
+        <p class="breadcrumb">Workspace <span>/</span> Live capture</p>
+        <h1>Good morning</h1>
+      </div>
+      <div class="top-actions">
+        <button id="themeButton" class="icon-button-circle" type="button" title="Toggle theme">◐</button>
+        <div class="avatar" title="Local workspace">VA</div>
+      </div>
+    </header>
+
+    <section class="metrics" aria-label="Workspace statistics">
+      <article><span>Transcriptions</span><strong id="metricCount">0</strong><small>Saved recordings</small></article>
+      <article><span>Words captured</span><strong id="metricWords">0</strong><small>Across all sessions</small></article>
+      <article><span>Languages</span><strong id="metricLanguages">0</strong><small>Recognition profiles</small></article>
+    </section>
+
+    <div class="content-grid">
+      <section class="capture-card">
+        <div class="capture-header">
+          <div>
+            <div class="live-label"><span></span> LIVE CAPTURE</div>
+            <h2>Speech studio</h2>
+          </div>
+          <select id="language" aria-label="Recognition language">
+            <option value="en-US">🇺🇸 English (US)</option>
+            <option value="hi-IN">🇮🇳 Hindi / Hinglish</option>
+            <option value="en-IN">🇮🇳 English (India)</option>
+            <option value="es-ES">🇪🇸 Spanish</option>
+            <option value="fr-FR">🇫🇷 French</option>
+          </select>
+        </div>
+
+        <div class="wave-stage" id="waveStage">
+          <div class="waveform" id="waveform" aria-hidden="true"></div>
+          <button id="recordButton" class="record-button" type="button" aria-label="Start recording">
+            <span class="mic-icon"></span>
+          </button>
+          <div class="record-caption">
+            <strong id="recordLabel">Start recording</strong>
+            <span id="status">Ready to listen</span>
+          </div>
+        </div>
+
+        <div class="transcript-wrap">
+          <div class="transcript-toolbar">
+            <span>Transcript</span>
+            <div>
+              <button id="copyButton" type="button" disabled>Copy</button>
+              <button id="speakButton" type="button" disabled>Listen</button>
+              <button id="clearButton" type="button" disabled>Clear</button>
+            </div>
+          </div>
+          <textarea id="transcript" rows="8" placeholder="Start speaking and your words will appear here..."></textarea>
+        </div>
+
+        <button id="saveButton" class="save-button" type="button" disabled>Save to history <span>⌘ S</span></button>
+        <p id="browserWarning" class="warning" hidden>
+          Live recognition is unavailable in this browser. Chrome or Edge over localhost/HTTPS is recommended.
+        </p>
+      </section>
+
+      <section class="history-card" id="historyCard">
+        <div class="history-header">
+          <div>
+            <p>YOUR LIBRARY</p>
+            <h2>Recent notes</h2>
+          </div>
+          <button id="exportButton" type="button" title="Export history">Export</button>
+        </div>
+        <div class="search-box">
+          <span>⌕</span>
+          <input id="searchInput" type="search" placeholder="Search transcriptions">
+        </div>
+        <div id="historyList" class="history-list"></div>
+      </section>
+    </div>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

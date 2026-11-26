@@ -1,0 +1,40 @@
+﻿Procucev AI Tech Hiring Assignment
+
+Please complete the the assignment below:
+
+Technology: Any tech Stack such as Python or Springboot Java or Node
+Database: Any relational database such as MySQL, PostgreSQL.
+
+
+Assignment 1: Real-time Transcription
+Create a web application "Speech to Text" service where the user would speak a sentence in real-time which could be multilingual in nature for example a mixture of Hindi & English & the system would transcribe those words in real-time. 
+
+Used Database to store transcription, & transcription history should be visible in the dashboard with CRUD operations.  
+
+Note: 
+1. Use any self deployed open source service for this speech to text service. One such service is gemini live 3.1 free API for this real-time transcription. 
+2. You can use any 3rd party API as well for “Text to Speech”, However, an open-source model would be preferred.
+3. We don’t expect you to achieve a complete assignment, we just want to assess your coding skills, partial assignments are also acceptable. 
+
+
+Deadline: Till the job position is vacant.
+
+
+Deliverables: 
+1. Publish code on github & share Github Repository link
+2. A Deployed application link on any cloud
+
+
+
+
+Once completed the assignment, Please submit the details for this assignment to “anilkumar.m@procucev.com” CC: to “anshul.goel@procucev.com” with below answers.
+
+
+Questions:
+1. This is an on-site opportunity at the Bangalore location. Are you willing to relocate or interested in work from  home only?
+2. Have you done any internship before? If yes, Can you elaborate?
+3. This is a full-time job opportunity. Are you available full-time for the same?
+4. What is your expected CTC, current CTC?
+5. Have you worked with git before? if yes, Can you share your last 5 pull requests link.
+6. Are you an immediate joiner.?
+7. Have you used any AI coding agent before such as Antigravity or Github Copilot or Kiro etc?
