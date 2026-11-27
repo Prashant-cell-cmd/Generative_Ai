@@ -1,4 +1,5 @@
-from datetime import datetime
+from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -28,21 +29,35 @@ class TranscriptionUpdate(BaseModel):
     language: str | None = None
 
 
+@contextmanager
 def get_db():
-    connection = sqlite3.connect(DB_PATH)
+    connection = sqlite3.connect(DB_PATH, timeout=10)
     connection.row_factory = sqlite3.Row
-    connection.execute(
-        """
-        CREATE TABLE IF NOT EXISTS transcriptions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            text TEXT NOT NULL,
-            language TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+    try:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS transcriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                text TEXT NOT NULL,
+                language TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
         )
-        """
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
+def current_timestamp():
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace(
+        "+00:00", "Z"
     )
-    return connection
 
 
 @app.get("/")
@@ -61,14 +76,18 @@ def list_transcriptions():
 
 @app.post("/api/transcriptions", status_code=201)
 def create_transcription(payload: TranscriptionCreate):
-    now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="Text cannot be blank")
+
+    now = current_timestamp()
     with get_db() as db:
         cursor = db.execute(
             """
             INSERT INTO transcriptions (text, language, created_at, updated_at)
             VALUES (?, ?, ?, ?)
             """,
-            (payload.text.strip(), payload.language, now, now),
+            (text, payload.language, now, now),
         )
         row = db.execute(
             "SELECT * FROM transcriptions WHERE id = ?", (cursor.lastrowid,)
@@ -78,7 +97,11 @@ def create_transcription(payload: TranscriptionCreate):
 
 @app.put("/api/transcriptions/{transcription_id}")
 def update_transcription(transcription_id: int, payload: TranscriptionUpdate):
-    now = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="Text cannot be blank")
+
+    now = current_timestamp()
     with get_db() as db:
         existing = db.execute(
             "SELECT * FROM transcriptions WHERE id = ?", (transcription_id,)
@@ -93,7 +116,7 @@ def update_transcription(transcription_id: int, payload: TranscriptionUpdate):
             SET text = ?, language = ?, updated_at = ?
             WHERE id = ?
             """,
-            (payload.text.strip(), language, now, transcription_id),
+            (text, language, now, transcription_id),
         )
         row = db.execute(
             "SELECT * FROM transcriptions WHERE id = ?", (transcription_id,)
@@ -123,13 +146,15 @@ async def transcribe_audio(
         from faster_whisper import WhisperModel
         import av
 
-        original_av_open = av.open
+        if not getattr(av.open, "_metadata_errors_compatible", False):
+            original_av_open = av.open
 
-        def compatible_av_open(*args, **kwargs):
-            kwargs.pop("metadata_errors", None)
-            return original_av_open(*args, **kwargs)
+            def compatible_av_open(*args, **kwargs):
+                kwargs.pop("metadata_errors", None)
+                return original_av_open(*args, **kwargs)
 
-        av.open = compatible_av_open
+            compatible_av_open._metadata_errors_compatible = True
+            av.open = compatible_av_open
     except ImportError:
         raise HTTPException(
             status_code=503,
@@ -137,11 +162,12 @@ async def transcribe_audio(
         )
 
     suffix = Path(audio.filename or "recording.webm").suffix or ".webm"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp:
-        temp.write(await audio.read())
-        temp_path = temp.name
-
+    temp_path = None
     try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp:
+            temp_path = Path(temp.name)
+            temp.write(await audio.read())
+
         if whisper_model is None:
             whisper_model = WhisperModel(
                 "tiny",
@@ -173,4 +199,5 @@ async def transcribe_audio(
             raise HTTPException(status_code=422, detail="No speech detected")
         return {"text": text}
     finally:
-        Path(temp_path).unlink(missing_ok=True)
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
