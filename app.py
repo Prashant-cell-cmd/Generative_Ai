@@ -1,3 +1,4 @@
+
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +14,8 @@ from fastapi import UploadFile, File, Form
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "transcriptions.db"
+DB_TIMEOUT = 10
+
 whisper_model = None
 
 app = FastAPI(title="Speech to Text")
@@ -31,8 +34,12 @@ class TranscriptionUpdate(BaseModel):
 
 @contextmanager
 def get_db():
-    connection = sqlite3.connect(DB_PATH, timeout=10)
+    connection = sqlite3.connect(
+        DB_PATH,
+        timeout=DB_TIMEOUT,
+    )
     connection.row_factory = sqlite3.Row
+
     try:
         connection.execute(
             """
@@ -45,11 +52,14 @@ def get_db():
             )
             """
         )
+
         yield connection
         connection.commit()
+
     except Exception:
         connection.rollback()
         raise
+
     finally:
         connection.close()
 
@@ -71,16 +81,19 @@ def list_transcriptions():
         rows = db.execute(
             "SELECT * FROM transcriptions ORDER BY created_at DESC"
         ).fetchall()
+
     return [dict(row) for row in rows]
 
 
 @app.post("/api/transcriptions", status_code=201)
 def create_transcription(payload: TranscriptionCreate):
     text = payload.text.strip()
+
     if not text:
         raise HTTPException(status_code=422, detail="Text cannot be blank")
 
     now = current_timestamp()
+
     with get_db() as db:
         cursor = db.execute(
             """
@@ -89,27 +102,38 @@ def create_transcription(payload: TranscriptionCreate):
             """,
             (text, payload.language, now, now),
         )
+
         row = db.execute(
-            "SELECT * FROM transcriptions WHERE id = ?", (cursor.lastrowid,)
+            "SELECT * FROM transcriptions WHERE id = ?",
+            (cursor.lastrowid,),
         ).fetchone()
+
     return dict(row)
 
 
 @app.put("/api/transcriptions/{transcription_id}")
 def update_transcription(transcription_id: int, payload: TranscriptionUpdate):
     text = payload.text.strip()
+
     if not text:
         raise HTTPException(status_code=422, detail="Text cannot be blank")
 
     now = current_timestamp()
+
     with get_db() as db:
         existing = db.execute(
-            "SELECT * FROM transcriptions WHERE id = ?", (transcription_id,)
+            "SELECT * FROM transcriptions WHERE id = ?",
+            (transcription_id,),
         ).fetchone()
+
         if existing is None:
-            raise HTTPException(status_code=404, detail="Transcription not found")
+            raise HTTPException(
+                status_code=404,
+                detail="Transcription not found",
+            )
 
         language = payload.language or existing["language"]
+
         db.execute(
             """
             UPDATE transcriptions
@@ -118,9 +142,12 @@ def update_transcription(transcription_id: int, payload: TranscriptionUpdate):
             """,
             (text, language, now, transcription_id),
         )
+
         row = db.execute(
-            "SELECT * FROM transcriptions WHERE id = ?", (transcription_id,)
+            "SELECT * FROM transcriptions WHERE id = ?",
+            (transcription_id,),
         ).fetchone()
+
     return dict(row)
 
 
@@ -128,10 +155,16 @@ def update_transcription(transcription_id: int, payload: TranscriptionUpdate):
 def delete_transcription(transcription_id: int):
     with get_db() as db:
         cursor = db.execute(
-            "DELETE FROM transcriptions WHERE id = ?", (transcription_id,)
+            "DELETE FROM transcriptions WHERE id = ?",
+            (transcription_id,),
         )
+
         if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Transcription not found")
+            raise HTTPException(
+                status_code=404,
+                detail="Transcription not found",
+            )
+
     return None
 
 
@@ -155,6 +188,7 @@ async def transcribe_audio(
 
             compatible_av_open._metadata_errors_compatible = True
             av.open = compatible_av_open
+
     except ImportError:
         raise HTTPException(
             status_code=503,
@@ -163,6 +197,7 @@ async def transcribe_audio(
 
     suffix = Path(audio.filename or "recording.webm").suffix or ".webm"
     temp_path = None
+
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp:
             temp_path = Path(temp.name)
@@ -176,8 +211,10 @@ async def transcribe_audio(
             )
 
         language_code = None
+
         if language in {"hi-IN", "en-IN"}:
             language_code = "hi" if language == "hi-IN" else "en"
+
         elif language in {"en-US", "es-ES", "fr-FR"}:
             language_code = {
                 "en-US": "en",
@@ -194,10 +231,19 @@ async def transcribe_audio(
             best_of=5,
             initial_prompt="Hindi and English mixed Hinglish speech.",
         )
-        text = " ".join(segment.text.strip() for segment in segments).strip()
+
+        text = " ".join(
+            segment.text.strip() for segment in segments
+        ).strip()
+
         if not text:
-            raise HTTPException(status_code=422, detail="No speech detected")
+            raise HTTPException(
+                status_code=422,
+                detail="No speech detected",
+            )
+
         return {"text": text}
+
     finally:
         if temp_path is not None:
             temp_path.unlink(missing_ok=True)
