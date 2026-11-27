@@ -7,7 +7,7 @@ import tempfile
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from fastapi import UploadFile, File, Form
 
 
@@ -19,14 +19,58 @@ app = FastAPI(title="Speech to Text")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 
+
+SUPPORTED_LANGUAGES = {
+    "en-US",
+    "en-IN",
+    "hi-IN",
+    "es-ES",
+    "fr-FR",
+}
+
+
 class TranscriptionCreate(BaseModel):
-    text: str = Field(min_length=1)
+    text: str = Field(min_length=1, max_length=10000)
     language: str = "en-US"
+
+    @field_validator("text")
+    @classmethod
+    def validate_text(cls, value):
+        value = value.strip()
+        if not value:
+            raise ValueError("Text cannot be blank")
+        return value
+
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, value):
+        value = value.strip()
+        if value not in SUPPORTED_LANGUAGES:
+            raise ValueError("Unsupported language")
+        return value
 
 
 class TranscriptionUpdate(BaseModel):
-    text: str = Field(min_length=1)
+    text: str = Field(min_length=1, max_length=10000)
     language: str | None = None
+
+    @field_validator("text")
+    @classmethod
+    def validate_text(cls, value):
+        value = value.strip()
+        if not value:
+            raise ValueError("Text cannot be blank")
+        return value
+
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, value):
+        if value is not None:
+            value = value.strip()
+            if value not in SUPPORTED_LANGUAGES:
+                raise ValueError("Unsupported language")
+        return value
+
 
 
 @contextmanager
